@@ -15,6 +15,7 @@ class app(tornado.web.Application):
 		handlers=[
 			(r"/api/login",UserHandler.LoginHandler),
 			(r"/api/register",UserHandler.RegisterHandler),
+			(r"/api/perfect",UserHandler.PerfectHandler),
 			(r"/api/userauthentication",UserHandler.AuthenHandler),
 			(r"/api/logout",UserHandler.LogoutHandler),
 			(r"/api/cancel",UserHandler.CancelHandler),

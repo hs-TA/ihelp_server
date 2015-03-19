@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
+	# -*- coding: utf-8 -*-
 import tornado.ioloop
 import tornado.web
 import tornado.httpserver
 from tornado.escape import *
 import json,os,base64
+import re
 
 class RegisterHandler(tornado.web.RequestHandler):
 	def get(self):
@@ -17,12 +18,18 @@ class RegisterHandler(tornado.web.RequestHandler):
 			self.write("{'state':1}")
 			print "username exist"
 			return
-		if(self.application.dbapi.getInfoBycardid(j['cardid']) is not None):
-			self.write("{'state':2}")
-			print "cardid exist"
+		if j['password'] != j['password1'] :
+			self.write("{'state':3}")
+			print "the password is illegal"
 			return
+		if len(j['password']) < 5 :
+			self.write("{'state':4}")
+			print "the password is illegal"
+			return
+		
+		
 		uid = self.application.dbapi.register(j)
-		self.write("{'state':3}")
+		self.write("{'state':5}")
 		print("Register success")
 
 		if('file' in j):
@@ -32,6 +39,54 @@ class RegisterHandler(tornado.web.RequestHandler):
 			filestring=base64.standard_b64encode(avatar.read())
 			self.application.util.setAvatar(j['username'],filestring,self.application.dbapi)
 		self.application.score.userRegister(uid,self.application.dbapi)
+		return
+
+class PerfectHandler(tornado.web.RequestHandler):
+	def get(self):
+		self.write("<p>PerfectHandler</p><form action='/api/perfect' method='post'><input type='submit' value='submit'></form>")	
+
+	def post(self):
+		content =self.request.body
+		#content = '{"username": "test1","password": "1","kind": 1, "cardid":"test" ,"realname":"1","sex":1,"age":1, "address":"1","illness":"1","phone":"11"}'
+		j = json.loads(content)
+		user = self.application.dbapi.getUserByUserName(j['username'])
+		if not re.match(ur"\d{15}|\d{18}",j['cardid']):
+			self.write("{'state':1}")
+			print "your cardid is illegal"
+			return
+		if(self.application.dbapi.getInfoBycardid(j['cardid']) is not None):
+			self.write("{'state':2}")
+			print "cardid exist"
+			return
+		if ('email' in j):
+			if not re.match(ur"\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*",j['email']):
+				self.write("{'state':3}")
+				print "the age is illegal"
+				return
+		if ('age' in j):
+			if not re.match(ur"[0-9]+$",j['age']):
+				self.write("{'state':4}")
+				print "the age is illegal"
+				return
+		if ('phone' in j):
+			if not re.match(ur"((\d{11})|^((\d{7,8})|(\d{4}|\d{3})-(\d{7,8})|(\d{4}|\d{3})-(\d{7,8})-(\d{4}|\d{3}|\d{2}|\d{1})|(\d{7,8})-(\d{4}|\d{3}|\d{2}|\d{1}))$)",j['phone']):
+				self.write("{'state':5}")
+				print "the phone is illegal"
+				return
+		result = self.application.dbapi.perfect(user,j)
+		if(isinstance(result,list)):
+			state = 6
+		else:
+			state = 7
+		self.write("{'state':"+str(state)+"}")
+		print("perfect success")
+
+		if('file' in j):
+			self.application.util.setAvatar(j['username'],j['file'],self.application.dbapi)
+		else:
+			avatar=open(os.path.abspath('./static/avatar/default.png'),"rb");
+			filestring=base64.standard_b64encode(avatar.read())
+			self.application.util.setAvatar(j['username'],filestring,self.application.dbapi)
 		return
 
 class LoginHandler(tornado.web.RequestHandler):
